@@ -1,12 +1,12 @@
-import { Struct, Infer, Result, Context, Describe } from './struct'
-import { Failure } from './error'
+import { Context, Describe, Infer, Result, Struct } from "./struct.ts";
+import { Failure } from "./error.ts";
 
 /**
  * Check if a value is an iterator.
  */
 
 function isIterable<T>(x: unknown): x is Iterable<T> {
-  return isObject(x) && typeof x[Symbol.iterator] === 'function'
+  return isObject(x) && typeof (x as any)[Symbol.iterator] === "function";
 }
 
 /**
@@ -14,7 +14,7 @@ function isIterable<T>(x: unknown): x is Iterable<T> {
  */
 
 export function isObject(x: unknown): x is object {
-  return typeof x === 'object' && x != null
+  return typeof x === "object" && x != null;
 }
 
 /**
@@ -22,12 +22,12 @@ export function isObject(x: unknown): x is object {
  */
 
 export function isPlainObject(x: unknown): x is { [key: string]: any } {
-  if (Object.prototype.toString.call(x) !== '[object Object]') {
-    return false
+  if (Object.prototype.toString.call(x) !== "[object Object]") {
+    return false;
   }
 
-  const prototype = Object.getPrototypeOf(x)
-  return prototype === null || prototype === Object.prototype
+  const prototype = Object.getPrototypeOf(x);
+  return prototype === null || prototype === Object.prototype;
 }
 
 /**
@@ -35,7 +35,7 @@ export function isPlainObject(x: unknown): x is { [key: string]: any } {
  */
 
 export function print(value: any): string {
-  return typeof value === 'string' ? JSON.stringify(value) : `${value}`
+  return typeof value === "string" ? JSON.stringify(value) : `${value}`;
 }
 
 /**
@@ -44,8 +44,8 @@ export function print(value: any): string {
  */
 
 export function shiftIterator<T>(input: Iterator<T>): T | undefined {
-  const { done, value } = input.next()
-  return done ? undefined : value
+  const { done, value } = input.next();
+  return done ? undefined : value;
 }
 
 /**
@@ -56,24 +56,24 @@ export function toFailure<T, S>(
   result: string | boolean | Partial<Failure>,
   context: Context,
   struct: Struct<T, S>,
-  value: any
+  value: any,
 ): Failure | undefined {
   if (result === true) {
-    return
+    return;
   } else if (result === false) {
-    result = {}
-  } else if (typeof result === 'string') {
-    result = { message: result }
+    result = {};
+  } else if (typeof result === "string") {
+    result = { message: result };
   }
 
-  const { path, branch } = context
-  const { type } = struct
+  const { path, branch } = context;
+  const { type } = struct;
   const {
     refinement,
     message = `Expected a value of type \`${type}\`${
-      refinement ? ` with refinement \`${refinement}\`` : ''
+      refinement ? ` with refinement \`${refinement}\`` : ""
     }, but received: \`${print(value)}\``,
-  } = result
+  } = result;
 
   return {
     value,
@@ -84,7 +84,7 @@ export function toFailure<T, S>(
     branch,
     ...result,
     message,
-  }
+  };
 }
 
 /**
@@ -95,17 +95,17 @@ export function* toFailures<T, S>(
   result: Result,
   context: Context,
   struct: Struct<T, S>,
-  value: any
+  value: any,
 ): IterableIterator<Failure> {
   if (!isIterable(result)) {
-    result = [result]
+    result = [result];
   }
 
   for (const r of result) {
-    const failure = toFailure(r, context, struct, value)
+    const failure = toFailure(r, context, struct, value);
 
     if (failure) {
-      yield failure
+      yield failure;
     }
   }
 }
@@ -119,38 +119,38 @@ export function* run<T, S>(
   value: unknown,
   struct: Struct<T, S>,
   options: {
-    path?: any[]
-    branch?: any[]
-    coerce?: boolean
-    mask?: boolean
-  } = {}
+    path?: any[];
+    branch?: any[];
+    coerce?: boolean;
+    mask?: boolean;
+  } = {},
 ): IterableIterator<[Failure, undefined] | [undefined, T]> {
-  const { path = [], branch = [value], coerce = false, mask = false } = options
-  const ctx: Context = { path, branch }
+  const { path = [], branch = [value], coerce = false, mask = false } = options;
+  const ctx: Context = { path, branch };
 
   if (coerce) {
-    value = struct.coercer(value, ctx)
+    value = struct.coercer(value, ctx);
 
     if (
       mask &&
-      struct.type !== 'type' &&
+      struct.type !== "type" &&
       isObject(struct.schema) &&
       isObject(value) &&
       !Array.isArray(value)
     ) {
       for (const key in value) {
-        if (struct.schema[key] === undefined) {
-          delete value[key]
+        if ((struct.schema as any)[key] === undefined) {
+          delete (value as any)[key];
         }
       }
     }
   }
 
-  let valid = true
+  let valid = true;
 
   for (const failure of struct.validator(value, ctx)) {
-    valid = false
-    yield [failure, undefined]
+    valid = false;
+    yield [failure, undefined];
   }
 
   for (let [k, v, s] of struct.entries(value, ctx)) {
@@ -159,23 +159,23 @@ export function* run<T, S>(
       branch: k === undefined ? branch : [...branch, v],
       coerce,
       mask,
-    })
+    });
 
     for (const t of ts) {
       if (t[0]) {
-        valid = false
-        yield [t[0], undefined]
+        valid = false;
+        yield [t[0], undefined];
       } else if (coerce) {
-        v = t[1]
+        v = t[1];
 
         if (k === undefined) {
-          value = v
+          value = v;
         } else if (value instanceof Map) {
-          value.set(k, v)
+          value.set(k, v);
         } else if (value instanceof Set) {
-          value.add(v)
+          value.add(v);
         } else if (isObject(value)) {
-          value[k] = v
+          (value as any)[k] = v;
         }
       }
     }
@@ -183,13 +183,13 @@ export function* run<T, S>(
 
   if (valid) {
     for (const failure of struct.refiner(value as T, ctx)) {
-      valid = false
-      yield [failure, undefined]
+      valid = false;
+      yield [failure, undefined];
     }
   }
 
   if (valid) {
-    yield [undefined, value as T]
+    yield [undefined, value as T];
   }
 }
 
@@ -199,65 +199,56 @@ export function* run<T, S>(
 
 export type UnionToIntersection<U> = (
   U extends any ? (arg: U) => any : never
-) extends (arg: infer I) => void
-  ? I
-  : never
+) extends (arg: infer I) => void ? I
+  : never;
 
 /**
  * Assign properties from one type to another, overwriting existing.
  */
 
-export type Assign<T, U> = Simplify<U & Omit<T, keyof U>>
+export type Assign<T, U> = Simplify<U & Omit<T, keyof U>>;
 
 /**
  * A schema for enum structs.
  */
 
 export type EnumSchema<T extends string | number | undefined> = {
-  [K in NonNullable<T>]: K
-}
+  [K in NonNullable<T>]: K;
+};
 
 /**
  * Check if a type is a match for another whilst treating overlapping
  * unions as a match.
  */
 
-export type IsMatch<T, G> = T extends G ? (G extends T ? T : never) : never
+export type IsMatch<T, G> = T extends G ? (G extends T ? T : never) : never;
 
 /**
  * Check if a type is an exact match.
  */
 
 export type IsExactMatch<T, U> = (<G>() => G extends T ? 1 : 2) extends <
-  G
->() => G extends U ? 1 : 2
-  ? T
-  : never
+  G,
+>() => G extends U ? 1 : 2 ? T
+  : never;
 
 /**
  * Check if a type is a record type.
  */
 
-export type IsRecord<T> = T extends object
-  ? string extends keyof T
-    ? T
-    : never
-  : never
+export type IsRecord<T> = T extends object ? string extends keyof T ? T
+: never
+  : never;
 /**
  * Check if a type is a tuple.
  */
 
-export type IsTuple<T> = T extends [any]
-  ? T
-  : T extends [any, any]
-  ? T
-  : T extends [any, any, any]
-  ? T
-  : T extends [any, any, any, any]
-  ? T
-  : T extends [any, any, any, any, any]
-  ? T
-  : never
+export type IsTuple<T> = T extends [any] ? T
+  : T extends [any, any] ? T
+  : T extends [any, any, any] ? T
+  : T extends [any, any, any, any] ? T
+  : T extends [any, any, any, any, any] ? T
+  : never;
 
 /**
  * Check if a type is a union.
@@ -265,15 +256,14 @@ export type IsTuple<T> = T extends [any]
 
 export type IsUnion<T, U extends T = T> = (
   T extends any ? (U extends T ? false : true) : false
-) extends false
-  ? never
-  : T
+) extends false ? never
+  : T;
 
 /**
  * A schema for object structs.
  */
 
-export type ObjectSchema = Record<string, Struct<any, any>>
+export type ObjectSchema = Record<string, Struct<any, any>>;
 
 /**
  * Infer a type from an object struct schema.
@@ -281,7 +271,7 @@ export type ObjectSchema = Record<string, Struct<any, any>>
 
 export type ObjectType<S extends ObjectSchema> = Simplify<
   Optionalize<{ [K in keyof S]: Infer<S[K]> }>
->
+>;
 
 /**
  * Omit properties from a type that extend from a specific type.
@@ -290,22 +280,23 @@ export type ObjectType<S extends ObjectSchema> = Simplify<
 export type OmitBy<T, V> = Omit<
   T,
   { [K in keyof T]: V extends Extract<T[K], V> ? K : never }[keyof T]
->
+>;
 
 /**
  * Normalize properties of a type that allow `undefined` to make them optional.
  */
 
-export type Optionalize<S extends object> = OmitBy<S, undefined> &
-  Partial<PickBy<S, undefined>>
+export type Optionalize<S extends object> =
+  & OmitBy<S, undefined>
+  & Partial<PickBy<S, undefined>>;
 
 /**
  * Transform an object schema type to represent a partial.
  */
 
 export type PartialObjectSchema<S extends ObjectSchema> = {
-  [K in keyof S]: Struct<Infer<S[K]> | undefined>
-}
+  [K in keyof S]: Struct<Infer<S[K]> | undefined>;
+};
 
 /**
  * Pick properties from a type that extend from a specific type.
@@ -314,74 +305,62 @@ export type PartialObjectSchema<S extends ObjectSchema> = {
 export type PickBy<T, V> = Pick<
   T,
   { [K in keyof T]: V extends Extract<T[K], V> ? K : never }[keyof T]
->
+>;
 
 /**
  * Simplifies a type definition to its most basic representation.
  */
 
-export type Simplify<T> = T extends any[] | Date
-  ? T
-  : { [K in keyof T]: T[K] } & {}
+export type Simplify<T> = T extends any[] | Date ? T
+  : { [K in keyof T]: T[K] } & {};
 
-export type If<B extends Boolean, Then, Else> = B extends true ? Then : Else
+export type If<B extends Boolean, Then, Else> = B extends true ? Then : Else;
 
 /**
  * A schema for any type of struct.
  */
 
 export type StructSchema<T> = [T] extends [string | undefined]
-  ? [T] extends [IsMatch<T, string | undefined>]
-    ? null
-    : [T] extends [IsUnion<T>]
-    ? EnumSchema<T>
-    : T
+  ? [T] extends [IsMatch<T, string | undefined>] ? null
+  : [T] extends [IsUnion<T>] ? EnumSchema<T>
+  : T
   : [T] extends [number | undefined]
-  ? [T] extends [IsMatch<T, number | undefined>]
-    ? null
-    : [T] extends [IsUnion<T>]
-    ? EnumSchema<T>
+    ? [T] extends [IsMatch<T, number | undefined>] ? null
+    : [T] extends [IsUnion<T>] ? EnumSchema<T>
     : T
-  : [T] extends [boolean]
-  ? [T] extends [IsExactMatch<T, boolean>]
-    ? null
-    : T
+  : [T] extends [boolean] ? [T] extends [IsExactMatch<T, boolean>] ? null
+  : T
   : T extends
-      | bigint
-      | symbol
-      | undefined
-      | null
-      | Function
-      | Date
-      | Error
-      | RegExp
-      | Map<any, any>
-      | WeakMap<any, any>
-      | Set<any>
-      | WeakSet<any>
-      | Promise<any>
-  ? null
-  : T extends Array<infer E>
-  ? T extends IsTuple<T>
-    ? null
-    : Struct<E>
-  : T extends object
-  ? T extends IsRecord<T>
-    ? null
-    : { [K in keyof T]: Describe<T[K]> }
-  : null
+    | bigint
+    | symbol
+    | undefined
+    | null
+    | Function
+    | Date
+    | Error
+    | RegExp
+    | Map<any, any>
+    | WeakMap<any, any>
+    | Set<any>
+    | WeakSet<any>
+    | Promise<any> ? null
+  : T extends Array<infer E> ? T extends IsTuple<T> ? null
+  : Struct<E>
+  : T extends object ? T extends IsRecord<T> ? null
+  : { [K in keyof T]: Describe<T[K]> }
+  : null;
 
 /**
  * A schema for tuple structs.
  */
 
-export type TupleSchema<T> = { [K in keyof T]: Struct<T[K]> }
+export type TupleSchema<T> = { [K in keyof T]: Struct<T[K]> };
 
 /**
  * Shorthand type for matching any `Struct`.
  */
 
-export type AnyStruct = Struct<any, any>
+export type AnyStruct = Struct<any, any>;
 
 /**
  * Infer a tuple of types from a tuple of `Struct`s.
@@ -392,17 +371,14 @@ export type AnyStruct = Struct<any, any>
 
 export type InferStructTuple<
   Tuple extends AnyStruct[],
-  Length extends number = Tuple['length']
-> = Length extends Length
-  ? number extends Length
-    ? Tuple
-    : _InferTuple<Tuple, Length, []>
-  : never
+  Length extends number = Tuple["length"],
+> = Length extends Length ? number extends Length ? Tuple
+: _InferTuple<Tuple, Length, []>
+  : never;
 type _InferTuple<
   Tuple extends AnyStruct[],
   Length extends number,
   Accumulated extends unknown[],
-  Index extends number = Accumulated['length']
-> = Index extends Length
-  ? Accumulated
-  : _InferTuple<Tuple, Length, [...Accumulated, Infer<Tuple[Index]>]>
+  Index extends number = Accumulated["length"],
+> = Index extends Length ? Accumulated
+  : _InferTuple<Tuple, Length, [...Accumulated, Infer<Tuple[Index]>]>;

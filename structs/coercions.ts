@@ -1,6 +1,6 @@
-import { Struct, is, Coercer } from '../struct'
-import { isPlainObject } from '../utils'
-import { string, unknown } from './types'
+import { Coercer, is, Struct } from "../struct.ts";
+import { isPlainObject } from "../utils.ts";
+import { string, unknown } from "./types.ts";
 
 /**
  * Augment a `Struct` to add an additional coercion step to its input.
@@ -16,16 +16,16 @@ import { string, unknown } from './types'
 export function coerce<T, S, C>(
   struct: Struct<T, S>,
   condition: Struct<C, any>,
-  coercer: Coercer<C>
+  coercer: Coercer<C>,
 ): Struct<T, S> {
   return new Struct({
     ...struct,
     coercer: (value, ctx) => {
       return is(value, condition)
         ? struct.coercer(coercer(value, ctx), ctx)
-        : struct.coercer(value, ctx)
+        : struct.coercer(value, ctx);
     },
-  })
+  });
 }
 
 /**
@@ -39,34 +39,34 @@ export function defaulted<T, S>(
   struct: Struct<T, S>,
   fallback: any,
   options: {
-    strict?: boolean
-  } = {}
+    strict?: boolean;
+  } = {},
 ): Struct<T, S> {
   return coerce(struct, unknown(), (x) => {
-    const f = typeof fallback === 'function' ? fallback() : fallback
+    const f = typeof fallback === "function" ? fallback() : fallback;
 
     if (x === undefined) {
-      return f
+      return f;
     }
 
     if (!options.strict && isPlainObject(x) && isPlainObject(f)) {
-      const ret = { ...x }
-      let changed = false
+      const ret = { ...x };
+      let changed = false;
 
       for (const key in f) {
         if (ret[key] === undefined) {
-          ret[key] = f[key]
-          changed = true
+          ret[key] = f[key];
+          changed = true;
         }
       }
 
       if (changed) {
-        return ret
+        return ret;
       }
     }
 
-    return x
-  })
+    return x;
+  });
 }
 
 /**
@@ -77,5 +77,5 @@ export function defaulted<T, S>(
  */
 
 export function trimmed<T, S>(struct: Struct<T, S>): Struct<T, S> {
-  return coerce(struct, string(), (x) => x.trim())
+  return coerce(struct, string(), (x) => x.trim());
 }

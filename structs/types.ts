@@ -1,22 +1,22 @@
-import { Infer, Struct } from '../struct'
-import { define } from './utilities'
+import { Infer, Struct } from "../struct.ts";
+import { define } from "./utilities.ts";
 import {
+  AnyStruct,
+  InferStructTuple,
+  isObject,
   ObjectSchema,
   ObjectType,
   print,
   run,
-  isObject,
-  AnyStruct,
-  InferStructTuple,
   UnionToIntersection,
-} from '../utils'
+} from "../utils.ts";
 
 /**
  * Ensure that any value passes validation.
  */
 
 export function any(): Struct<any, null> {
-  return define('any', () => true)
+  return define("any", () => true);
 }
 
 /**
@@ -27,29 +27,29 @@ export function any(): Struct<any, null> {
  * and it is preferred to using `array(any())`.
  */
 
-export function array<T extends Struct<any>>(Element: T): Struct<Infer<T>[], T>
-export function array(): Struct<unknown[], undefined>
+export function array<T extends Struct<any>>(Element: T): Struct<Infer<T>[], T>;
+export function array(): Struct<unknown[], undefined>;
 export function array<T extends Struct<any>>(Element?: T): any {
   return new Struct({
-    type: 'array',
+    type: "array",
     schema: Element,
     *entries(value) {
       if (Element && Array.isArray(value)) {
         for (const [i, v] of value.entries()) {
-          yield [i, v, Element]
+          yield [i, v, Element];
         }
       }
     },
     coercer(value) {
-      return Array.isArray(value) ? value.slice() : value
+      return Array.isArray(value) ? value.slice() : value;
     },
     validator(value) {
       return (
         Array.isArray(value) ||
         `Expected an array value, but received: ${print(value)}`
-      )
+      );
     },
-  })
+  });
 }
 
 /**
@@ -57,9 +57,9 @@ export function array<T extends Struct<any>>(Element?: T): any {
  */
 
 export function bigint(): Struct<bigint, null> {
-  return define('bigint', (value) => {
-    return typeof value === 'bigint'
-  })
+  return define("bigint", (value) => {
+    return typeof value === "bigint";
+  });
 }
 
 /**
@@ -67,9 +67,9 @@ export function bigint(): Struct<bigint, null> {
  */
 
 export function boolean(): Struct<boolean, null> {
-  return define('boolean', (value) => {
-    return typeof value === 'boolean'
-  })
+  return define("boolean", (value) => {
+    return typeof value === "boolean";
+  });
 }
 
 /**
@@ -80,12 +80,12 @@ export function boolean(): Struct<boolean, null> {
  */
 
 export function date(): Struct<Date, null> {
-  return define('date', (value) => {
+  return define("date", (value) => {
     return (
       (value instanceof Date && !isNaN(value.getTime())) ||
       `Expected a valid \`Date\` object, but received: ${print(value)}`
-    )
-  })
+    );
+  });
 }
 
 /**
@@ -96,29 +96,29 @@ export function date(): Struct<Date, null> {
  */
 
 export function enums<T extends number>(
-  values: readonly T[]
-): Struct<T, { [K in T[][number]]: K }>
+  values: readonly T[],
+): Struct<T, { [K in T[][number]]: K }>;
 export function enums<T extends string>(
-  values: readonly T[]
-): Struct<T, { [K in T[][number]]: K }>
+  values: readonly T[],
+): Struct<T, { [K in T[][number]]: K }>;
 export function enums<T extends number | string>(values: readonly T[]): any {
-  const schema: any = {}
-  const description = values.map((v) => print(v)).join()
+  const schema: any = {};
+  const description = values.map((v) => print(v)).join();
 
   for (const key of values) {
-    schema[key] = key
+    schema[key] = key;
   }
 
   return new Struct({
-    type: 'enums',
+    type: "enums",
     schema,
     validator(value) {
       return (
         values.includes(value as any) ||
         `Expected one of \`${description}\`, but received: ${print(value)}`
-      )
+      );
     },
-  })
+  });
 }
 
 /**
@@ -126,12 +126,12 @@ export function enums<T extends number | string>(values: readonly T[]): any {
  */
 
 export function func(): Struct<Function, null> {
-  return define('func', (value) => {
+  return define("func", (value) => {
     return (
-      typeof value === 'function' ||
+      typeof value === "function" ||
       `Expected a function, but received: ${print(value)}`
-    )
-  })
+    );
+  });
 }
 
 /**
@@ -139,14 +139,14 @@ export function func(): Struct<Function, null> {
  */
 
 export function instance<T extends { new (...args: any): any }>(
-  Class: T
+  Class: T,
 ): Struct<InstanceType<T>, null> {
-  return define('instance', (value) => {
+  return define("instance", (value) => {
     return (
       value instanceof Class ||
       `Expected a \`${Class.name}\` instance, but received: ${print(value)}`
-    )
-  })
+    );
+  });
 }
 
 /**
@@ -154,12 +154,12 @@ export function instance<T extends { new (...args: any): any }>(
  */
 
 export function integer(): Struct<number, null> {
-  return define('integer', (value) => {
+  return define("integer", (value) => {
     return (
-      (typeof value === 'number' && !isNaN(value) && Number.isInteger(value)) ||
+      (typeof value === "number" && !isNaN(value) && Number.isInteger(value)) ||
       `Expected an integer, but received: ${print(value)}`
-    )
-  })
+    );
+  });
 }
 
 /**
@@ -167,51 +167,52 @@ export function integer(): Struct<number, null> {
  */
 
 export function intersection<A extends AnyStruct, B extends AnyStruct[]>(
-  Structs: [A, ...B]
+  Structs: [A, ...B],
 ): Struct<Infer<A> & UnionToIntersection<InferStructTuple<B>[number]>, null> {
   return new Struct({
-    type: 'intersection',
+    type: "intersection",
     schema: null,
     *entries(value, ctx) {
       for (const S of Structs) {
-        yield* S.entries(value, ctx)
+        yield* S.entries(value, ctx);
       }
     },
     *validator(value, ctx) {
       for (const S of Structs) {
-        yield* S.validator(value, ctx)
+        yield* S.validator(value, ctx);
       }
     },
     *refiner(value, ctx) {
       for (const S of Structs) {
-        yield* S.refiner(value, ctx)
+        yield* S.refiner(value, ctx);
       }
     },
-  })
+  });
 }
 
 /**
  * Ensure that a value is an exact value, using `===` for comparison.
  */
 
-export function literal<T extends boolean>(constant: T): Struct<T, T>
-export function literal<T extends number>(constant: T): Struct<T, T>
-export function literal<T extends string>(constant: T): Struct<T, T>
-export function literal<T>(constant: T): Struct<T, null>
+export function literal<T extends boolean>(constant: T): Struct<T, T>;
+export function literal<T extends number>(constant: T): Struct<T, T>;
+export function literal<T extends string>(constant: T): Struct<T, T>;
+export function literal<T>(constant: T): Struct<T, null>;
 export function literal<T>(constant: T): any {
-  const description = print(constant)
-  const t = typeof constant
+  const description = print(constant);
+  const t = typeof constant;
   return new Struct({
-    type: 'literal',
-    schema:
-      t === 'string' || t === 'number' || t === 'boolean' ? constant : null,
+    type: "literal",
+    schema: t === "string" || t === "number" || t === "boolean"
+      ? constant
+      : null,
     validator(value) {
       return (
         value === constant ||
         `Expected the literal \`${description}\`, but received: ${print(value)}`
-      )
+      );
     },
-  })
+  });
 }
 
 /**
@@ -219,33 +220,33 @@ export function literal<T>(constant: T): any {
  * specific types.
  */
 
-export function map(): Struct<Map<unknown, unknown>, null>
+export function map(): Struct<Map<unknown, unknown>, null>;
 export function map<K, V>(
   Key: Struct<K>,
-  Value: Struct<V>
-): Struct<Map<K, V>, null>
+  Value: Struct<V>,
+): Struct<Map<K, V>, null>;
 export function map<K, V>(Key?: Struct<K>, Value?: Struct<V>): any {
   return new Struct({
-    type: 'map',
+    type: "map",
     schema: null,
     *entries(value) {
       if (Key && Value && value instanceof Map) {
         for (const [k, v] of value.entries()) {
-          yield [k as string, k, Key]
-          yield [k as string, v, Value]
+          yield [k as string, k, Key];
+          yield [k as string, v, Value];
         }
       }
     },
     coercer(value) {
-      return value instanceof Map ? new Map(value) : value
+      return value instanceof Map ? new Map(value) : value;
     },
     validator(value) {
       return (
         value instanceof Map ||
         `Expected a \`Map\` object, but received: ${print(value)}`
-      )
+      );
     },
-  })
+  });
 }
 
 /**
@@ -253,7 +254,7 @@ export function map<K, V>(Key?: Struct<K>, Value?: Struct<V>): any {
  */
 
 export function never(): Struct<never, null> {
-  return define('never', () => false)
+  return define("never", () => false);
 }
 
 /**
@@ -265,7 +266,7 @@ export function nullable<T, S>(struct: Struct<T, S>): Struct<T | null, S> {
     ...struct,
     validator: (value, ctx) => value === null || struct.validator(value, ctx),
     refiner: (value, ctx) => value === null || struct.refiner(value, ctx),
-  })
+  });
 }
 
 /**
@@ -273,12 +274,12 @@ export function nullable<T, S>(struct: Struct<T, S>): Struct<T | null, S> {
  */
 
 export function number(): Struct<number, null> {
-  return define('number', (value) => {
+  return define("number", (value) => {
     return (
-      (typeof value === 'number' && !isNaN(value)) ||
+      (typeof value === "number" && !isNaN(value)) ||
       `Expected a number, but received: ${print(value)}`
-    )
-  })
+    );
+  });
 }
 
 /**
@@ -288,39 +289,39 @@ export function number(): Struct<number, null> {
  * Note: Unrecognized properties will fail validation.
  */
 
-export function object(): Struct<Record<string, unknown>, null>
+export function object(): Struct<Record<string, unknown>, null>;
 export function object<S extends ObjectSchema>(
-  schema: S
-): Struct<ObjectType<S>, S>
+  schema: S,
+): Struct<ObjectType<S>, S>;
 export function object<S extends ObjectSchema>(schema?: S): any {
-  const knowns = schema ? Object.keys(schema) : []
-  const Never = never()
+  const knowns = schema ? Object.keys(schema) : [];
+  const Never = never();
   return new Struct({
-    type: 'object',
+    type: "object",
     schema: schema ? schema : null,
     *entries(value) {
       if (schema && isObject(value)) {
-        const unknowns = new Set(Object.keys(value))
+        const unknowns = new Set(Object.keys(value));
 
         for (const key of knowns) {
-          unknowns.delete(key)
-          yield [key, value[key], schema[key]]
+          unknowns.delete(key);
+          yield [key, (value as any)[key], schema[key]];
         }
 
         for (const key of unknowns) {
-          yield [key, value[key], Never]
+          yield [key, (value as any)[key], Never];
         }
       }
     },
     validator(value) {
       return (
         isObject(value) || `Expected an object, but received: ${print(value)}`
-      )
+      );
     },
     coercer(value) {
-      return isObject(value) ? { ...value } : value
+      return isObject(value) ? { ...value } : value;
     },
-  })
+  });
 }
 
 /**
@@ -333,7 +334,7 @@ export function optional<T, S>(struct: Struct<T, S>): Struct<T | undefined, S> {
     validator: (value, ctx) =>
       value === undefined || struct.validator(value, ctx),
     refiner: (value, ctx) => value === undefined || struct.refiner(value, ctx),
-  })
+  });
 }
 
 /**
@@ -345,26 +346,26 @@ export function optional<T, S>(struct: Struct<T, S>): Struct<T | undefined, S> {
 
 export function record<K extends string, V>(
   Key: Struct<K>,
-  Value: Struct<V>
+  Value: Struct<V>,
 ): Struct<Record<K, V>, null> {
   return new Struct({
-    type: 'record',
+    type: "record",
     schema: null,
     *entries(value) {
       if (isObject(value)) {
         for (const k in value) {
-          const v = value[k]
-          yield [k, k, Key]
-          yield [k, v, Value]
+          const v = (value as any)[k];
+          yield [k, k, Key];
+          yield [k, v, Value];
         }
       }
     },
     validator(value) {
       return (
         isObject(value) || `Expected an object, but received: ${print(value)}`
-      )
+      );
     },
-  })
+  });
 }
 
 /**
@@ -375,9 +376,9 @@ export function record<K extends string, V>(
  */
 
 export function regexp(): Struct<RegExp, null> {
-  return define('regexp', (value) => {
-    return value instanceof RegExp
-  })
+  return define("regexp", (value) => {
+    return value instanceof RegExp;
+  });
 }
 
 /**
@@ -385,29 +386,29 @@ export function regexp(): Struct<RegExp, null> {
  * specific type.
  */
 
-export function set(): Struct<Set<unknown>, null>
-export function set<T>(Element: Struct<T>): Struct<Set<T>, null>
+export function set(): Struct<Set<unknown>, null>;
+export function set<T>(Element: Struct<T>): Struct<Set<T>, null>;
 export function set<T>(Element?: Struct<T>): any {
   return new Struct({
-    type: 'set',
+    type: "set",
     schema: null,
     *entries(value) {
       if (Element && value instanceof Set) {
         for (const v of value) {
-          yield [v as string, v, Element]
+          yield [v as string, v, Element];
         }
       }
     },
     coercer(value) {
-      return value instanceof Set ? new Set(value) : value
+      return value instanceof Set ? new Set(value) : value;
     },
     validator(value) {
       return (
         value instanceof Set ||
         `Expected a \`Set\` object, but received: ${print(value)}`
-      )
+      );
     },
-  })
+  });
 }
 
 /**
@@ -415,12 +416,12 @@ export function set<T>(Element?: Struct<T>): any {
  */
 
 export function string(): Struct<string, null> {
-  return define('string', (value) => {
+  return define("string", (value) => {
     return (
-      typeof value === 'string' ||
+      typeof value === "string" ||
       `Expected a string, but received: ${print(value)}`
-    )
-  })
+    );
+  });
 }
 
 /**
@@ -429,19 +430,19 @@ export function string(): Struct<string, null> {
  */
 
 export function tuple<A extends AnyStruct, B extends AnyStruct[]>(
-  Structs: [A, ...B]
+  Structs: [A, ...B],
 ): Struct<[Infer<A>, ...InferStructTuple<B>], null> {
-  const Never = never()
+  const Never = never();
 
   return new Struct({
-    type: 'tuple',
+    type: "tuple",
     schema: null,
     *entries(value) {
       if (Array.isArray(value)) {
-        const length = Math.max(Structs.length, value.length)
+        const length = Math.max(Structs.length, value.length);
 
         for (let i = 0; i < length; i++) {
-          yield [i, value[i], Structs[i] || Never]
+          yield [i, value[i], Structs[i] || Never];
         }
       }
     },
@@ -449,9 +450,9 @@ export function tuple<A extends AnyStruct, B extends AnyStruct[]>(
       return (
         Array.isArray(value) ||
         `Expected an array, but received: ${print(value)}`
-      )
+      );
     },
-  })
+  });
 }
 
 /**
@@ -462,25 +463,25 @@ export function tuple<A extends AnyStruct, B extends AnyStruct[]>(
  */
 
 export function type<S extends ObjectSchema>(
-  schema: S
+  schema: S,
 ): Struct<ObjectType<S>, S> {
-  const keys = Object.keys(schema)
+  const keys = Object.keys(schema);
   return new Struct({
-    type: 'type',
+    type: "type",
     schema,
     *entries(value) {
       if (isObject(value)) {
         for (const k of keys) {
-          yield [k, value[k], schema[k]]
+          yield [k, (value as any)[k], schema[k]];
         }
       }
     },
     validator(value) {
       return (
         isObject(value) || `Expected an object, but received: ${print(value)}`
-      )
+      );
     },
-  })
+  });
 }
 
 /**
@@ -488,46 +489,47 @@ export function type<S extends ObjectSchema>(
  */
 
 export function union<A extends AnyStruct, B extends AnyStruct[]>(
-  Structs: [A, ...B]
+  Structs: [A, ...B],
 ): Struct<Infer<A> | InferStructTuple<B>[number], null> {
-  const description = Structs.map((s) => s.type).join(' | ')
+  const description = Structs.map((s) => s.type).join(" | ");
   return new Struct({
-    type: 'union',
+    type: "union",
     schema: null,
     coercer(value, ctx) {
-      const firstMatch =
-        Structs.find((s) => {
-          const [e] = s.validate(value, { coerce: true })
-          return !e
-        }) || unknown()
-      return firstMatch.coercer(value, ctx)
+      const firstMatch = Structs.find((s) => {
+        const [e] = s.validate(value, { coerce: true });
+        return !e;
+      }) || unknown();
+      return firstMatch.coercer(value, ctx);
     },
     validator(value, ctx) {
-      const failures = []
+      const failures = [];
 
       for (const S of Structs) {
-        const [...tuples] = run(value, S, ctx)
-        const [first] = tuples
+        const [...tuples] = run(value, S, ctx);
+        const [first] = tuples;
 
         if (!first[0]) {
-          return []
+          return [];
         } else {
           for (const [failure] of tuples) {
             if (failure) {
-              failures.push(failure)
+              failures.push(failure);
             }
           }
         }
       }
 
       return [
-        `Expected the value to satisfy a union of \`${description}\`, but received: ${print(
-          value
-        )}`,
+        `Expected the value to satisfy a union of \`${description}\`, but received: ${
+          print(
+            value,
+          )
+        }`,
         ...failures,
-      ]
+      ];
     },
-  })
+  });
 }
 
 /**
@@ -535,5 +537,5 @@ export function union<A extends AnyStruct, B extends AnyStruct[]>(
  */
 
 export function unknown(): Struct<unknown, null> {
-  return define('unknown', () => true)
+  return define("unknown", () => true);
 }
