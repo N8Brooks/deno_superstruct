@@ -3,5 +3,9 @@
   "deno.lint": true,
   "deno.unstable": false,
   "editor.defaultFormatter": "denoland.vscode-deno",
-  "editor.formatOnSave": true
+  "editor.formatOnSave": true,
+  "cSpell.words": [
+    "deno",
+    "superstruct"
+  ]
 }
